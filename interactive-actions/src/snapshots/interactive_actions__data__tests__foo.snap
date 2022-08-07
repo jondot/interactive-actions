@@ -1,0 +1,6 @@
+---
+source: interactive-actions/src/data.rs
+expression: "Foobar { hey: true }"
+---
+hey: true
+

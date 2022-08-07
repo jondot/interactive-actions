@@ -1,0 +1,7 @@
+---
+source: interactive-actions/src/lib.rs
+expression: actions.varbag
+---
+{
+    "city": "tlv",
+}
