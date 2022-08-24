@@ -14,6 +14,20 @@ use std::vec::IntoIter;
 pub type VarBag = BTreeMap<String, String>;
 
 ///
+/// When in the workflow to hook the action
+///
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum ActionHook {
+    /// Run after actions
+    #[default]
+    #[serde(rename = "after")]
+    After,
+
+    /// Run before actions
+    #[serde(rename = "before")]
+    Before,
+}
+///
 /// [`Action`] defines the action to run:
 /// * script
 /// * interaction
@@ -42,6 +56,10 @@ pub struct Action {
     /// captures the output of the script, otherwise, stream to screen in real time
     #[serde(default)]
     pub capture: bool,
+
+    /// When to run this action
+    #[serde(default)]
+    pub hook: ActionHook,
 }
 ///
 /// result of the [`Action`]

@@ -1,4 +1,7 @@
-use interactive_actions::{data::Action, ActionRunner};
+use interactive_actions::{
+    data::{Action, ActionHook, VarBag},
+    ActionRunner,
+};
 
 const YAML: &str = r#"
 - name: start
@@ -26,9 +29,13 @@ const YAML: &str = r#"
 
 fn main() {
     let actions: Vec<Action> = serde_yaml::from_str(YAML).unwrap();
-    let mut runner = ActionRunner::new(&actions);
+    let mut runner = ActionRunner::default();
+    let mut v = VarBag::new();
     let res = runner.run(
+        &actions,
         None,
+        &mut v,
+        ActionHook::After,
         Some(|action: &Action| {
             println!("{}", action.name);
         }),

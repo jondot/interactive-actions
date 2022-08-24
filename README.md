@@ -50,12 +50,14 @@ Create a `Vec<Action>`, here described in YAML, but you can either build it in R
 And run it:
 
 ```rust
-use interactive_actions::{data::Action, ActionRunner};
+use interactive_actions::{data::{Action, ActionHook}, ActionRunner};
 
 let actions: Vec<Action> = serde_yaml::from_str(YAML).unwrap();
-let mut runner = ActionRunner::new(&actions);
+let mut runner = ActionRunner::default();
 let res = runner.run(
+   &actions,
    None,
+   ActionHook::After,
    Some(|action: &Action| {
       println!("{}", action.name);
    }),

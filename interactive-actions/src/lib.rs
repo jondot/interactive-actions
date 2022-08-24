@@ -13,7 +13,7 @@
 //! Run a script conditionally, only after confirming:
 //!
 //! ```no_run
-//! use interactive_actions::data::Action;
+//! use interactive_actions::data::{Action, ActionHook, VarBag};
 //! use interactive_actions::ActionRunner;
 //! use std::path::Path;
 //!
@@ -26,9 +26,10 @@
 //!   run: echo hello
 //! "#).unwrap();
 //!
-//! let mut actions = ActionRunner::new(&actions_defs);
+//! let mut actions = ActionRunner::default();
+//! let mut v = VarBag::new();
 //! // give it a current working folder `.` and a progress function
-//! actions.run(Some(Path::new(".")), Some(|action: &Action| { println!("running: {:?}", action) }));
+//! actions.run(&actions_defs, Some(Path::new(".")), &mut v, ActionHook::After, Some(|action: &Action| { println!("running: {:?}", action) }));
 //!```
 //!
 //! Describe a set of actions and interactive prompting, optionally using input variable capture,
@@ -36,7 +37,7 @@
 //!
 //!
 //! ```no_run
-//! use interactive_actions::data::Action;
+//! use interactive_actions::data::{Action, ActionHook, VarBag};
 //! use interactive_actions::ActionRunner;
 //! use std::path::Path;
 //!
@@ -66,8 +67,9 @@
 //!   run: echo {{city}} {{transport}}
 //! "#).unwrap();
 //!
-//! let mut actions = ActionRunner::new(&actions_defs);
-//! actions.run(Some(Path::new(".")), None::<fn(&Action) -> ()>);
+//! let mut actions = ActionRunner::default();
+//! let mut v = VarBag::new();
+//! actions.run(&actions_defs, Some(Path::new(".")), &mut v, ActionHook::After, None::<fn(&Action) -> ()>);
 //!```
 //!
 //!
@@ -75,11 +77,12 @@
 #![allow(clippy::must_use_candidate)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::use_self)]
+#![allow(clippy::missing_const_for_fn)]
 
 pub mod data;
 
 use anyhow::{Error, Result};
-use data::{Action, ActionResult, Response, RunResult, VarBag};
+use data::{Action, ActionHook, ActionResult, Response, RunResult, VarBag};
 use requestty_ui::events::{KeyEvent, TestEvents};
 use run_script::IoOptions;
 use std::path::Path;
@@ -88,29 +91,17 @@ use std::vec::IntoIter;
 ///
 /// Runs [`Action`]s and keeps track of variables in `varbag`.
 ///
-pub struct ActionRunner<'a> {
-    /// actions to run
-    pub actions: &'a [Action],
-    /// keep track of captured variables
-    pub varbag: VarBag,
+#[derive(Default)]
+pub struct ActionRunner {
     /// synthetic events to be injected to prompts, useful in tests
     pub events: Option<TestEvents<IntoIter<KeyEvent>>>,
 }
 
-impl<'a> ActionRunner<'a> {
+impl ActionRunner {
     /// create with actions. does not run them yet.
-    pub fn new(actions: &'a [Action]) -> Self {
-        Self {
-            varbag: VarBag::new(),
-            actions,
-            events: None::<TestEvents<IntoIter<KeyEvent>>>,
-        }
-    }
     /// create with actions and a set of synthetic events for testing
-    pub fn with_events(actions: &'a [Action], events: Vec<KeyEvent>) -> Self {
+    pub fn with_events(events: Vec<KeyEvent>) -> Self {
         Self {
-            varbag: VarBag::new(),
-            actions,
             events: Some(TestEvents::new(events)),
         }
     }
@@ -123,14 +114,18 @@ impl<'a> ActionRunner<'a> {
     #[allow(clippy::needless_pass_by_value)]
     pub fn run<P>(
         &mut self,
+        actions: &[Action],
         working_dir: Option<&Path>,
+        varbag: &mut VarBag,
+        hook: ActionHook,
         progress: Option<P>,
     ) -> Result<Vec<ActionResult>>
     where
         P: Fn(&Action),
     {
-        self.actions
+        actions
             .iter()
+            .filter(|action| action.hook == hook)
             .map(|action| {
                 // get interactive response from the user if any is defined
                 if let Some(ref progress) = progress {
@@ -141,7 +136,7 @@ impl<'a> ActionRunner<'a> {
                     .interaction
                     .as_ref()
                     .map_or(Ok(Response::None), |interaction| {
-                        interaction.play(Some(&mut self.varbag), self.events.as_mut())
+                        interaction.play(Some(varbag), self.events.as_mut())
                     });
 
                 // with the defined run script and user response, perform an action
@@ -174,7 +169,7 @@ impl<'a> ActionRunner<'a> {
                         let args = vec![];
 
                         // varbag replacements: {{interaction.outvar}} -> value
-                        let script = self.varbag.iter().fold(run.clone(), |acc, (k, v)| {
+                        let script = varbag.iter().fold(run.clone(), |acc, (k, v)| {
                             acc.replace(&format!("{{{{{}}}}}", k), v)
                         });
 
@@ -250,11 +245,18 @@ mod tests {
             KeyCode::Down.into(),      // select: train
             KeyCode::Enter.into(),     //
         ];
-        let mut actions = ActionRunner::with_events(&actions_defs, events);
+        let mut actions = ActionRunner::with_events(events);
+        let mut v = VarBag::new();
         assert_debug_snapshot!(actions
-            .run(Some(Path::new(".")), None::<&fn(&Action) -> ()>)
+            .run(
+                &actions_defs,
+                Some(Path::new(".")),
+                &mut v,
+                ActionHook::After,
+                None::<&fn(&Action) -> ()>
+            )
             .unwrap());
-        assert_debug_snapshot!(actions.varbag);
+        assert_debug_snapshot!(v);
     }
 
     #[test]
@@ -279,14 +281,20 @@ mod tests {
             KeyCode::Char('v').into(), //
             KeyCode::Enter.into(),     //
         ];
-        let mut actions = ActionRunner::with_events(&actions_defs, events);
+        let mut actions = ActionRunner::with_events(events);
+        let mut v = VarBag::new();
 
         insta::assert_yaml_snapshot!(actions
-            .run(Some(Path::new(".")), None::<&fn(&Action) -> ()>)
+            .run(
+                &actions_defs,
+                Some(Path::new(".")),
+                &mut v,
+                ActionHook::After,
+            None::<&fn(&Action) -> ()>)
             .unwrap(),  {
             "[0].run.err" => ""
         });
 
-        assert_debug_snapshot!(actions.varbag);
+        assert_debug_snapshot!(v);
     }
 }
