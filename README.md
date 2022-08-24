@@ -12,7 +12,7 @@ This is a Rust library that runs actions and interactions that are defined decla
 
 ```toml
 [dependencies]
-interactive-actions = "0.1.0"
+interactive-actions = "1"
 ```
 
 For most recent version see [crates.io](https://crates.io/crates/interactive-actions)
