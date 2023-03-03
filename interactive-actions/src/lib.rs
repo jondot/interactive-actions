@@ -170,7 +170,7 @@ impl ActionRunner {
 
                         // varbag replacements: {{interaction.outvar}} -> value
                         let script = varbag.iter().fold(run.clone(), |acc, (k, v)| {
-                            acc.replace(&format!("{{{{{}}}}}", k), v)
+                            acc.replace(&format!("{{{{{k}}}}}"), v)
                         });
 
                         run_script::run(script.as_str(), &args, &options)

@@ -10,6 +10,10 @@ use requestty_ui::events::{KeyEvent, TestEvents};
 use serde_derive::{Deserialize, Serialize};
 use std::vec::IntoIter;
 
+fn default<T: Default + PartialEq>(t: &T) -> bool {
+    *t == Default::default()
+}
+
 #[doc(hidden)]
 pub type VarBag = BTreeMap<String, String>;
 
@@ -43,22 +47,29 @@ pub struct Action {
     pub interaction: Option<Interaction>,
 
     /// a run script
+    #[serde(default)]
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub run: Option<String>,
 
     /// ignore exit code from the script, otherwise if error then exists
+    ///
     #[serde(default)]
+    #[serde(skip_serializing_if = "default")]
     pub ignore_exit: bool,
 
     /// if confirm cancel, cancel all the rest of the actions and break out
     #[serde(default)]
+    #[serde(skip_serializing_if = "default")]
     pub break_if_cancel: bool,
 
     /// captures the output of the script, otherwise, stream to screen in real time
     #[serde(default)]
+    #[serde(skip_serializing_if = "default")]
     pub capture: bool,
 
     /// When to run this action
     #[serde(default)]
+    #[serde(skip_serializing_if = "default")]
     pub hook: ActionHook,
 }
 ///
@@ -111,10 +122,13 @@ pub struct Interaction {
     pub kind: InteractionKind,
     /// what to ask the user
     pub prompt: String,
+
     /// if set, capture the value of answer, and set it to a variable name defined here
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub out: Option<String>,
 
     /// define the set of options just for kind=select
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub options: Option<Vec<String>>,
 }
 impl Interaction {

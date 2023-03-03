@@ -40,5 +40,5 @@ fn main() {
             println!("{}", action.name);
         }),
     );
-    println!("{:?}", res);
+    println!("{res:?}");
 }

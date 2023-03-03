@@ -82,14 +82,14 @@ fn main() -> Result<(), anyhow::Error> {
                 if confirm("open report folder?") {
                     cmd!("open", file).run()?;
                 } else {
-                    println!("report location: {}", file);
+                    println!("report location: {file}");
                 }
             }
 
             Ok(())
         }
         Some(("vars", _)) => {
-            println!("root: {:?}", root);
+            println!("root: {root:?}");
             Ok(())
         }
         Some(("ci", _)) => {
