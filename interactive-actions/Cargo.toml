@@ -1,6 +1,6 @@
 [package]
 edition = "2021"
-version = "1.0.0"
+version = "1.0.1"
 name = "interactive-actions"
 description = "Run actions and interactions defined declaratively"
 authors = ["Dotan Nahum <dotan@rng0.io>"]
